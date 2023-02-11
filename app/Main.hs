@@ -37,7 +37,7 @@ covid19APIHandler request payload = case requestMethod request of
   "POST" -> case lookup "Content-Type" (requestHeaders request) of
     Just _ ->
       case decode payload of
-        Just covid19Data -> jsonResponse $ Covid19Data (name covid19Data) (tel covid19Data) (Just True)
+        Just covid19Data -> jsonResponse $ Covid19Data (name covid19Data) (tel covid19Data) (covid19 covid19Data) (Just "ok")
         Nothing -> responseLBS status400 [] "Invalid JSON"
     Nothing -> responseLBS status400 [] "Invalid Content-Type"
   _ -> responseLBS status405 [] "Method Not Allowed"
@@ -67,7 +67,8 @@ main = do
 data Covid19Data = Covid19Data
   { name :: String,
     tel :: String,
-    covid19 :: Maybe Bool
+    covid19 :: Maybe Bool,
+    status :: Maybe String
   }
   deriving (Show, Generic)
 
