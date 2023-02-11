@@ -5,32 +5,43 @@
 module Main (main) where
 
 import Data.Aeson
-    ( decode, fromEncoding, FromJSON, ToJSON(toEncoding) )
-import Data.ByteString.Lazy as BL ( fromChunks )
+  ( FromJSON,
+    ToJSON (toEncoding),
+    decode,
+    fromEncoding,
+  )
+import Data.ByteString.Lazy as BL (fromChunks)
 import qualified Data.ByteString.Lazy as L
-import Data.Text as T ( Text )
-import Data.Text.Encoding as T ( decodeUtf8, encodeUtf8 )
-import GHC.Generics ( Generic )
+import Data.Text as T (Text)
+import Data.Text.Encoding as T (decodeUtf8, encodeUtf8)
+import GHC.Generics (Generic)
 import NeatInterpolation (text)
 import Network.HTTP.Types
-    ( hContentType, status200, status400, status404, status405 )
+  ( hContentType,
+    status200,
+    status400,
+    status404,
+    status405,
+  )
 import Network.Wai
-    ( responseBuilder,
-      responseLBS,
-      strictRequestBody,
-      Application,
-      Request(queryString, rawPathInfo, requestMethod, requestHeaders),
-      Response )
+  ( Application,
+    Request (queryString, rawPathInfo, requestHeaders, requestMethod),
+    Response,
+    responseBuilder,
+    responseLBS,
+    strictRequestBody,
+  )
 import Network.Wai.Handler.Warp (run)
 
 app :: Application
 app request respond = do
-  payload <- strictRequestBody request
-  respond $ case rawPathInfo request of
+  response <- case rawPathInfo request of
     "/api/covid19" -> do
-      covid19APIHandler request payload
-    "/covid19.html" -> covid19Handler request
-    _ -> responseLBS status404 [] "Not Found"
+      payload <- strictRequestBody request
+      pure $ covid19APIHandler request payload
+    "/covid19.html" -> pure $ covid19Handler request
+    _ -> pure $ responseLBS status404 [] "Not Found"
+  respond response
 
 covid19APIHandler :: Request -> L.ByteString -> Response
 covid19APIHandler request payload = case requestMethod request of
@@ -48,7 +59,7 @@ covid19Handler request = do
   case (lookup "name" params, lookup "tel" params) of
     (Just (Just n), Just (Just t)) ->
       responseLBS status200 [(hContentType, "text/html")] $ toByteString $ responseWithParams (decodeUtf8 n) (decodeUtf8 t) (decodeUtf8 $ maybe "false" (const "true") (lookup "covid19" params))
-    _ -> responseLBS status200 [(hContentType, "text/html")] $ toByteString  defaultResponse
+    _ -> responseLBS status200 [(hContentType, "text/html")] $ toByteString defaultResponse
 
 toByteString :: Text -> L.ByteString
 toByteString = fromChunks . return . encodeUtf8
