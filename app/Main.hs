@@ -37,21 +37,21 @@ app :: Application
 app request respond = do
   response <- case rawPathInfo request of
     "/api/covid19" -> do
-      payload <- strictRequestBody request
-      pure $ covid19APIHandler request payload
+      covid19APIHandler request
     "/covid19.html" -> pure $ covid19Handler request
     _ -> pure $ responseLBS status404 [] "Not Found"
   respond response
 
-covid19APIHandler :: Request -> L.ByteString -> Response
-covid19APIHandler request payload = case requestMethod request of
+covid19APIHandler :: Request -> IO Response
+covid19APIHandler request = case requestMethod request of
   "POST" -> case lookup "Content-Type" (requestHeaders request) of
-    Just _ ->
+    Just _ -> do
+      payload <- strictRequestBody request
       case decode payload of
-        Just covid19Data -> jsonResponse $ Covid19Data (name covid19Data) (tel covid19Data) (covid19 covid19Data) (Just "ok")
-        Nothing -> responseLBS status400 [] "Invalid JSON"
-    Nothing -> responseLBS status400 [] "Invalid Content-Type"
-  _ -> responseLBS status405 [] "Method Not Allowed"
+        Just covid19Data -> pure $ jsonResponse $ Covid19Data (name covid19Data) (tel covid19Data) (covid19 covid19Data) (Just "ok")
+        Nothing -> pure $ responseLBS status400 [] "Invalid JSON"
+    Nothing -> pure $ responseLBS status400 [] "Invalid Content-Type"
+  _ -> pure $ responseLBS status405 [] "Method Not Allowed"
 
 covid19Handler :: Request -> Response
 covid19Handler request = do
