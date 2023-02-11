@@ -9,20 +9,14 @@ import Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy as L
 import Data.Text as T
 import Data.Text.Encoding as T
-import Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding as TL
 import Data.Text.Lazy.IO as TL
 import GHC.Generics
 import NeatInterpolation (text)
 import Network.HTTP.Types
 import Network.Wai
 import Network.Wai.Handler.Warp (run)
-import Network.Wai.Parse
-  ( Param,
-    lbsBackEnd,
-    parseRequestBody,
-  )
 
+app :: Application
 app request respond = do
   payload <- strictRequestBody request
   respond $ case rawPathInfo request of
@@ -35,7 +29,7 @@ covid19APIHandler :: Request -> L.ByteString -> Response
 covid19APIHandler request payload = case requestMethod request of
   "POST" -> case lookup "Content-Type" (requestHeaders request) of
     Just _ ->
-      case (decode payload) :: Maybe Covid19Data of
+      case decode payload of
         Just covid19Data -> jsonResponse $ Covid19Data (name covid19Data) (tel covid19Data) (Just True)
         Nothing -> responseLBS status400 [] "Invalid JSON"
     Nothing -> responseLBS status400 [] "Invalid Content-Type"
@@ -44,11 +38,9 @@ covid19APIHandler request payload = case requestMethod request of
 covid19Handler :: Request -> Response
 covid19Handler request = do
   let params = queryString request
-  let name = lookup "name" params
-  let tel = lookup "tel" params
-  let covid19 = lookup "covid19" params
-  case (name, tel, covid19) of
-    (Just (Just n), Just (Just t), _) -> responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ responseWithParams (T.decodeUtf8 n) (T.decodeUtf8 t) (T.decodeUtf8 $ maybe "false" (\_ -> "true") covid19)
+  case (lookup "name" params, lookup "tel" params) of
+    (Just (Just n), Just (Just t)) ->
+      responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ responseWithParams (T.decodeUtf8 n) (T.decodeUtf8 t) (T.decodeUtf8 $ maybe "false" (const "true") (lookup "covid19" params))
     _ -> responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ defaultResponse
 
 jsonResponse :: ToJSON a => a -> Response
@@ -59,7 +51,7 @@ jsonResponse =
 
 main :: IO ()
 main = do
-  TL.putStrLn $ "http://localhost:8080/"
+  TL.putStrLn "http://localhost:8080/"
   run 8080 app
 
 data Covid19Data = Covid19Data
@@ -73,6 +65,7 @@ instance FromJSON Covid19Data
 
 instance ToJSON Covid19Data
 
+defaultResponse :: Text
 defaultResponse =
   [text|<html>
   <head>
@@ -102,7 +95,7 @@ defaultResponse =
 |]
 
 responseWithParams :: T.Text -> T.Text -> T.Text -> T.Text
-responseWithParams name tel covid19 =
+responseWithParams name_ tel_ covid19_ =
   [text|
 <html>
   <head>
@@ -112,9 +105,9 @@ responseWithParams name tel covid19 =
     <h1>Shabak COVID-19 Registration</h1>
     <h2>Registration successful:</h2>
     <ul>
-      <li>Name: $name</li>
-      <li>Tel: $tel</li>
-      <li>COVID-19: $covid19</li>
+      <li>Name: $name_</li>
+      <li>Tel: $tel_</li>
+      <li>COVID-19: $covid19_</li>
     </ul>
   </body>
 </html>
