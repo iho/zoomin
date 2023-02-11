@@ -5,15 +5,22 @@
 module Main (main) where
 
 import Data.Aeson
-import Data.ByteString.Lazy as BL
+    ( decode, fromEncoding, FromJSON, ToJSON(toEncoding) )
+import Data.ByteString.Lazy as BL ( fromChunks )
 import qualified Data.ByteString.Lazy as L
-import Data.Text as T
-import Data.Text.Encoding as T
-import Data.Text.Lazy.IO as TL
-import GHC.Generics
+import Data.Text as T ( Text )
+import Data.Text.Encoding as T ( decodeUtf8, encodeUtf8 )
+import GHC.Generics ( Generic )
 import NeatInterpolation (text)
 import Network.HTTP.Types
+    ( hContentType, status200, status400, status404, status405 )
 import Network.Wai
+    ( responseBuilder,
+      responseLBS,
+      strictRequestBody,
+      Application,
+      Request(queryString, rawPathInfo, requestMethod, requestHeaders),
+      Response )
 import Network.Wai.Handler.Warp (run)
 
 app :: Application
@@ -40,8 +47,11 @@ covid19Handler request = do
   let params = queryString request
   case (lookup "name" params, lookup "tel" params) of
     (Just (Just n), Just (Just t)) ->
-      responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ responseWithParams (T.decodeUtf8 n) (T.decodeUtf8 t) (T.decodeUtf8 $ maybe "false" (const "true") (lookup "covid19" params))
-    _ -> responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ defaultResponse
+      responseLBS status200 [(hContentType, "text/html")] $ toByteString $ responseWithParams (decodeUtf8 n) (decodeUtf8 t) (decodeUtf8 $ maybe "false" (const "true") (lookup "covid19" params))
+    _ -> responseLBS status200 [(hContentType, "text/html")] $ toByteString  defaultResponse
+
+toByteString :: Text -> L.ByteString
+toByteString = fromChunks . return . encodeUtf8
 
 jsonResponse :: ToJSON a => a -> Response
 jsonResponse =
@@ -51,7 +61,7 @@ jsonResponse =
 
 main :: IO ()
 main = do
-  TL.putStrLn "http://localhost:8080/"
+  Prelude.putStrLn "http://localhost:8080/"
   run 8080 app
 
 data Covid19Data = Covid19Data
@@ -94,7 +104,7 @@ defaultResponse =
 </html>
 |]
 
-responseWithParams :: T.Text -> T.Text -> T.Text -> T.Text
+responseWithParams :: Text -> Text -> Text -> Text
 responseWithParams name_ tel_ covid19_ =
   [text|
 <html>
