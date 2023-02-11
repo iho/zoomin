@@ -34,12 +34,9 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
-    , blaze-html
     , bytestring
-    , hamlet
     , http-types
     , neat-interpolation
-    , shakespeare
     , text
     , wai
     , wai-extra
@@ -56,12 +53,9 @@ executable zoomin-exe
   build-depends:
       aeson
     , base >=4.7 && <5
-    , blaze-html
     , bytestring
-    , hamlet
     , http-types
     , neat-interpolation
-    , shakespeare
     , text
     , wai
     , wai-extra
@@ -80,12 +74,9 @@ test-suite zoomin-test
   build-depends:
       aeson
     , base >=4.7 && <5
-    , blaze-html
     , bytestring
-    , hamlet
     , http-types
     , neat-interpolation
-    , shakespeare
     , text
     , wai
     , wai-extra

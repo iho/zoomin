@@ -5,30 +5,23 @@
 module Main (main) where
 
 import Data.Aeson
+import Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy as L
-import qualified Data.Text.IO
-import Data.Text.Encoding         as T
-import Data.ByteString            as B
-import Data.ByteString.Lazy       as BL
-import Data.Text.Lazy.Encoding    as TL
-import Data.Text.Lazy.IO          as TL
-import Data.Text.Lazy             as TL
-import Data.Text                  as T
-import Data.Text.Encoding         as T
-import Data.Text.IO               as T
+import Data.Text as T
+import Data.Text.Encoding as T
+import Data.Text.Lazy as TL
+import Data.Text.Lazy.Encoding as TL
+import Data.Text.Lazy.IO as TL
 import GHC.Generics
-import Lib
 import NeatInterpolation (text)
 import Network.HTTP.Types
 import Network.Wai
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Parse
-  ( lbsBackEnd,
+  ( Param,
+    lbsBackEnd,
     parseRequestBody,
-    Param,
   )
-import Text.Blaze.Html.Renderer.String (renderHtml)
-import Text.Hamlet (shamlet)
 
 app request respond = do
   (params, _) <- parseRequestBody lbsBackEnd request
@@ -52,7 +45,7 @@ covid19APIHandler request payload = case requestMethod request of
 
 covid19Handler :: Request -> [Param] -> Response
 covid19Handler request params = case requestMethod request of
-  "GET" -> responseLBS status200 [(hContentType, "text/html")] $  BL.fromChunks . return . T.encodeUtf8 $  defaultResponse
+  "GET" -> responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ defaultResponse
   "POST" -> case lookup "Content-Type" (requestHeaders request) of
     Just _ -> do
       let name = lookup "name" params
@@ -60,7 +53,7 @@ covid19Handler request params = case requestMethod request of
       let covid19 = lookup "covid19" params
       case (name, tel, covid19) of
         (Just name, Just tel, _) -> responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ responseWithParams (T.decodeUtf8 name) (T.decodeUtf8 tel) (T.decodeUtf8 $ maybe "false" (\x -> "true") covid19)
-        _ ->  responseLBS status400 [] $ TL.encodeUtf8 . TL.pack $ "Not enough parameters" ++ "name: " ++ (show name) ++ ", tel: " ++ (show tel) ++ ", covid19: " ++ (show covid19) ++ ", params: " ++ (show params)
+        _ -> responseLBS status400 [] $ TL.encodeUtf8 . TL.pack $ "Not enough parameters" ++ "name: " ++ (show name) ++ ", tel: " ++ (show tel) ++ ", covid19: " ++ (show covid19) ++ ", params: " ++ (show params)
     Nothing -> responseLBS status400 [] "Invalid Content-Type"
   _ -> responseLBS status405 [] "Method Not Allowed"
 
@@ -114,8 +107,9 @@ defaultResponse =
 </html>
 |]
 
-responseWithParams :: T.Text  -> T.Text -> T.Text -> T.Text
-responseWithParams name tel covid19 = [text|
+responseWithParams :: T.Text -> T.Text -> T.Text -> T.Text
+responseWithParams name tel covid19 =
+  [text|
 <html>
   <head>
     <title>Shabak COVID-19 Registration</title>

@@ -25,9 +25,6 @@ dependencies:
 - wai-extra
 - warp
 - http-types
-- hamlet
-- shakespeare
-- blaze-html
 - aeson
 - neat-interpolation
 - text
