@@ -24,13 +24,11 @@ import Network.Wai.Parse
   )
 
 app request respond = do
-  (params, _) <- parseRequestBody lbsBackEnd request
   payload <- strictRequestBody request
-  Prelude.putStrLn $ "request: " ++ (show params)
   respond $ case rawPathInfo request of
     "/api/covid19" -> do
       covid19APIHandler request payload
-    "/covid19.html" -> covid19Handler request params
+    "/covid19.html" -> covid19Handler request
     _ -> responseLBS status404 [] "Not Found"
 
 covid19APIHandler :: Request -> L.ByteString -> Response
@@ -43,19 +41,15 @@ covid19APIHandler request payload = case requestMethod request of
     Nothing -> responseLBS status400 [] "Invalid Content-Type"
   _ -> responseLBS status405 [] "Method Not Allowed"
 
-covid19Handler :: Request -> [Param] -> Response
-covid19Handler request params = case requestMethod request of
-  "GET" -> responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ defaultResponse
-  "POST" -> case lookup "Content-Type" (requestHeaders request) of
-    Just _ -> do
-      let name = lookup "name" params
-      let tel = lookup "tel" params
-      let covid19 = lookup "covid19" params
-      case (name, tel, covid19) of
-        (Just name, Just tel, _) -> responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ responseWithParams (T.decodeUtf8 name) (T.decodeUtf8 tel) (T.decodeUtf8 $ maybe "false" (\x -> "true") covid19)
-        _ -> responseLBS status400 [] $ TL.encodeUtf8 . TL.pack $ "Not enough parameters" ++ "name: " ++ (show name) ++ ", tel: " ++ (show tel) ++ ", covid19: " ++ (show covid19) ++ ", params: " ++ (show params)
-    Nothing -> responseLBS status400 [] "Invalid Content-Type"
-  _ -> responseLBS status405 [] "Method Not Allowed"
+covid19Handler :: Request -> Response
+covid19Handler request = do
+  let params = queryString request
+  let name = lookup "name" params
+  let tel = lookup "tel" params
+  let covid19 = lookup "covid19" params
+  case (name, tel, covid19) of
+    (Just (Just n), Just (Just t), _) -> responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ responseWithParams (T.decodeUtf8 n) (T.decodeUtf8 t) (T.decodeUtf8 $ maybe "false" (\_ -> "true") covid19)
+    _ -> responseLBS status200 [(hContentType, "text/html")] $ BL.fromChunks . return . T.encodeUtf8 $ defaultResponse
 
 jsonResponse :: ToJSON a => a -> Response
 jsonResponse =
@@ -86,7 +80,7 @@ defaultResponse =
   </head>
   <body>
     <h1>Shabak COVID-19 Registration</h1>
-    <form method="POST">
+    <form>
       <div>
         <label for="name">Name: </label>
         <input type="text" name="name" id="name" />
